@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical" android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fitsSystemWindows="true"
+    android:layout_gravity="start">
+
+    <!--存放历史打开文件-->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+        <TextView
+            style="@style/Title"
+            android:text="@string/recent_open"
+            android:gravity="center"/>
+
+        <android.support.v7.widget.RecyclerView
+            android:id="@+id/rv_display_history"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@color/listBackground"/>
+    </LinearLayout>
+    <View
+        android:background="@color/boundary"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"/>
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+        <TextView
+            style="@style/Title"
+            android:text="@string/Command"
+            android:gravity="center"/>
+        <View
+            style="@style/boundary"/>
+        <TextView
+            android:id="@+id/new_file_command"
+           style="@style/command_item"
+            android:text="@string/new_file"/>
+        <View
+            style="@style/boundary"/>
+        <TextView
+            android:id="@+id/open_file_command"
+            style="@style/command_item"
+            android:text="@string/open_file"/>
+        <View
+            style="@style/boundary"/>
+        <TextView
+            android:id="@+id/setting_soft_command"
+            style="@style/command_item"
+            android:text="@string/settings"/>
+        <View
+            style="@style/boundary"/>
+        <TextView
+            android:id="@+id/about_soft_command"
+            style="@style/command_item"
+            android:text="@string/about_software"/>
+
+    </LinearLayout>
+
+</LinearLayout>

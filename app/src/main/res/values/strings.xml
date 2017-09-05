@@ -1,0 +1,17 @@
+<resources>
+    <string name="app_name">TestApplication</string>
+    <string name="recent_open">最近打开</string>
+    <string name="Command">命令</string>
+    <string name="new_file">新建文件</string>
+    <string name="open_file">打开文件</string>
+    <string name="settings">设置软件</string>
+    <string name="about_software">关于软件</string>
+    <string name="encrypt">加密</string>
+    <string name="save_file">存储</string>
+    <string name="saving">正在保存...</string>
+    <string name="save_succeed">保存成功</string>
+    <string name="save_file_alert">保存内容</string>
+    <string name="confirm">确定</string>
+    <string name="introduce">本软件为本人练手所用，可以试试，不一定好用，谢谢</string>
+    <string name="contact">QQ:870684110</string>
+</resources>

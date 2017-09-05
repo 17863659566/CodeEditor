@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">TestApplication</string>
+    <string name="recent_open">最近打开</string>
+    <string name="Command">命令</string>
+    <string name="new_file">新建文件</string>
+    <string name="open_file">打开文件</string>
+    <string name="settings">设置软件</string>
+    <string name="about_software">关于软件</string>
+</resources>

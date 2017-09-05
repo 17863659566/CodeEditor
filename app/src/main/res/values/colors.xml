@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorPrimary">#3F51B5</color>
+    <color name="colorPrimaryDark">#303F9F</color>
+    <color name="colorAccent">#FF4081</color>
+    <color name="titleBackground">#404040</color>
+    <color name="boundary">#ffffff</color>
+    <color name="listBackground">#45454b</color>
+    <color name="itemBackground">#1a123e</color>
+    <color name="app_white">#f8f4f3f3</color>
+    <color name="app_gray">#abacaa</color>
+    <color name="strokeColor">#7f6a9e</color>
+</resources>

@@ -1,5 +1,6 @@
 package com.zh.young.codeeditor.Command;
 
+import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
 
@@ -19,9 +20,12 @@ public class UndoCommand extends Command{
             return;
         }
         String data = entity.getData();
+        int start = entity.getStart();
+        int end = entity.getAfter();
         EditText editText = (EditText) view;
-        editText.setText(data);
-        editText.setSelection(data.length());
+        Log.i("data","data = " + data + "-----"+ start + "----" +(start+end) + data.substring(start,start+end));
+        editText.setText(data.substring(start,end));
+        editText.setSelection(end-start);
 
 
     }

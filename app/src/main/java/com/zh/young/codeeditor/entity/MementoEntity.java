@@ -5,7 +5,25 @@ package com.zh.young.codeeditor.entity;
  */
 
 public class MementoEntity {
+    private int  start;
+    private int after;
     private String data;
+
+    public int getStart() {
+        return start;
+    }
+
+    public void setStart(int start) {
+        this.start = start;
+    }
+
+    public int getAfter() {
+        return after;
+    }
+
+    public void setAfter(int after) {
+        this.after = after;
+    }
 
     public String getData() {
         return data;
@@ -14,7 +32,4 @@ public class MementoEntity {
     public void setData(String data) {
         this.data = data;
     }
-
-
-
 }

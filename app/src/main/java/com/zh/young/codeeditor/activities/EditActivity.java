@@ -15,9 +15,7 @@ import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
 import android.view.Gravity;
-import android.view.KeyEvent;
 import android.view.View;
-import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.ImageButton;
@@ -26,10 +24,14 @@ import android.widget.Toast;
 
 import com.zh.young.codeeditor.Command.Command;
 import com.zh.young.codeeditor.Command.Invoker;
+import com.zh.young.codeeditor.Command.RedoCommand;
 import com.zh.young.codeeditor.Command.UndoCommand;
 import com.zh.young.codeeditor.Exception.FileSystemNotMount;
 import com.zh.young.codeeditor.R;
 import com.zh.young.codeeditor.entity.Constants;
+import com.zh.young.codeeditor.entity.MementoEntity;
+import com.zh.young.codeeditor.entity.StringRecord;
+import com.zh.young.codeeditor.states.Memento;
 
 import java.io.File;
 import java.io.FileReader;
@@ -69,6 +71,8 @@ public class EditActivity extends AppCompatActivity implements View.OnClickListe
     private TextView mDisplayFileName;
     private File mResultFile;
     private InputMethodManager mManager;
+    private StringRecord mRecord;
+    private Memento mMementoInstance;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -87,7 +91,7 @@ public class EditActivity extends AppCompatActivity implements View.OnClickListe
         timer.schedule(task,1000);
         mInvoker = new Invoker();
         mManager = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
-
+        mMementoInstance = Memento.getInstance();
 
     }
 
@@ -154,6 +158,9 @@ public class EditActivity extends AppCompatActivity implements View.OnClickListe
                 mInvoker.call(mEtPanel);
                 break;
             case R.id.redoButton:
+                command = new RedoCommand();
+                mInvoker.setCommand(command);
+                mInvoker.call(mEtPanel);
                 break;
             case R.id.saveButton:
                 //1. 获取EditPanel中的数据
@@ -270,16 +277,32 @@ public class EditActivity extends AppCompatActivity implements View.OnClickListe
 
     @Override
     public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-            Log.i("Text","更改前" + s.toString());
+                mRecord = new StringRecord();
+                mRecord.start = start;
+                mRecord.after = after;
+        //Log.i("TextWatcher","beforeTextChanged"+ start +"----" + after);
+
+
     }
 
     @Override
     public void onTextChanged(CharSequence s, int start, int before, int count) {
-
+        //Log.i("TextWatcher","onTextChanged");
     }
 
     @Override
     public void afterTextChanged(Editable s) {
-        Log.i("Text","更改后" + s.toString());
+        //记录当前输入的数据
+        String string = s.subSequence(mRecord.start + mRecord.count, s.length()).toString();
+        MementoEntity undoEntity = new MementoEntity();
+        MementoEntity redoEntity = new MementoEntity();
+        undoEntity.setData(s.toString());
+        undoEntity.setStart(0);
+        undoEntity.setAfter(mRecord.start);
+        redoEntity.setData(s.toString());
+        redoEntity.setStart(mRecord.start);
+        redoEntity.setAfter(mRecord.after + mRecord.start);
+        mMementoInstance.undoAddState(undoEntity);
+        mMementoInstance.redoAddState(redoEntity);
     }
 }

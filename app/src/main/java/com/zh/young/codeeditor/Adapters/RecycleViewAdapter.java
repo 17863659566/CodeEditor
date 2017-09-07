@@ -42,7 +42,14 @@ public class RecycleViewAdapter extends Adapter<RecycleViewAdapter.Holder> imple
     @Override
     public void onBindViewHolder(Holder holder, int position) {
         Log.i("RecycleViewAdapter","onBindViewHolder called" + data.size());
-        holder.fileName.setText(data.get(position).getName());
+        File file = data.get(position);
+        if(file.isFile()){
+            holder.fileIcon.setImageResource(R.drawable.icon_file);
+
+        }else{
+            holder.fileIcon.setImageResource(R.drawable.folder);
+        }
+        holder.fileName.setText(file.getName());
         holder.fileName.setTag(data.get(position));
     }
 
@@ -55,6 +62,7 @@ public class RecycleViewAdapter extends Adapter<RecycleViewAdapter.Holder> imple
     @Override
     public void onClick(View v) {
         File file = (File) v.findViewById(R.id.tv_file_name).getTag();
+
         mOnItemClickListener.onItemClick(v, file);
     }
 

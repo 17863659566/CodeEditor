@@ -9,6 +9,7 @@ import android.os.Message;
 import android.os.Messenger;
 import android.os.RemoteException;
 import android.support.annotation.Nullable;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
@@ -69,6 +70,8 @@ public class NewFileActivity extends AppCompatActivity implements View.OnClickLi
     private EditText mFileNameET;
     private String mFileType;
     private PullDownListView mFileTypePDLV;
+    private AlertDialog mDialog;
+    private EditText mFolderName;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -110,6 +113,7 @@ public class NewFileActivity extends AppCompatActivity implements View.OnClickLi
 
         View exploreFile = findViewById(R.id.explore_file);
         mCreateFolderButton = (ImageButton) exploreFile.findViewById(R.id.createFolderButton);
+        mCreateFolderButton.setOnClickListener(this);
         mFileList = (RecyclerView) exploreFile.findViewById(R.id.file_list);
 
         mDisplayPath = (TextView) exploreFile.findViewById(R.id.display_path);
@@ -120,11 +124,12 @@ public class NewFileActivity extends AppCompatActivity implements View.OnClickLi
         mFileList.setLayoutManager(manager);
         adapter.setOnItemClickListener(new RecycleViewAdapter.OnRecyclerViewItemClickListener() {
 
-
-
             @Override
             public void onItemClick(View view, File data) {
                 NewFileActivity.this.data = data;
+                if(data.isFile()){
+                    return;
+                }
                 mDisplayPath.setText(data.getAbsolutePath());
                 Intent intent = new Intent(NewFileActivity.this, FileFindService.class);
                 intent.putExtra("file",data);
@@ -160,23 +165,80 @@ public class NewFileActivity extends AppCompatActivity implements View.OnClickLi
                 //TODO 获取文本框内的文件名称和弹框内的文件类型，然后组合成文件名，存储起来后，跳到编辑界面
                 Editable fileName = mFileNameET.getText();
                 String fileType = mFileTypePDLV.getFileType();
+                if(fileName.toString().equals("")){
+                    Toast.makeText(this, R.string.can_not_create_file, Toast.LENGTH_SHORT).show();
+                    break;
+                }
                 if(data == null){
                     Toast.makeText(this, "请选择保存位置", Toast.LENGTH_SHORT).show();
                 }else{
                     String filePath = data.getAbsolutePath()+"/" + fileName + fileType;
                     File file = new File(filePath);
-
+                    Toast.makeText(this, "新建成功", Toast.LENGTH_SHORT).show();
                     //开启编辑界面
                     Intent intent = new Intent();
                     intent.putExtra("file",file);
                     setResult(RESULT_OK,intent);
                     finish();
                 }
-
-
                 break;
             case R.id.encrypt_file_name :
                 break;
+            case R.id.createFolderButton :
+                AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                View view = View.inflate(this, R.layout.new_foler, null);
+                mFolderName = (EditText) view.findViewById(R.id.folder_name);
+                view.findViewById(R.id.cancel_button).setOnClickListener(this);
+                view.findViewById(R.id.confirm_button).setOnClickListener(this);
+                builder.setView(view);
+                mDialog = builder.create();
+                mDialog.show();
+                break;
+            case R.id.cancel_button :
+                mDialog.dismiss();
+                break;
+            case R.id.confirm_button :
+                Editable text = mFolderName.getText();
+                File file = null;
+                if(data != null){
+
+                    file = new File(data, text.toString());
+                    if(file.exists()){
+                        Toast.makeText(this, R.string.can_create_foler_again, Toast.LENGTH_SHORT).show();
+                    }else{
+                        file.mkdir();
+                        Toast.makeText(this, R.string.create_foler_succeed, Toast.LENGTH_SHORT).show();
+                    }
+                }else{
+                    Toast.makeText(this, R.string.select_folder, Toast.LENGTH_SHORT).show();
+                }
+                mDialog.dismiss();
+                if(file != null){
+                    mFileLists.add(file);
+                    adapter.notifyDataSetChanged();
+                }
+                break;
         }
+    }
+
+    @Override
+    public void onBackPressed() {
+        if(data != null){
+            if(data.getName().equals("storage")){
+                finish();
+            }
+            data = data.getParentFile();
+            mDisplayPath.setText(data.getAbsolutePath());
+            Intent intent = new Intent(NewFileActivity.this, FileFindService.class);
+            intent.putExtra("file",data);
+            intent.putExtra("whoCall", Constants.NEW_FILE_ACTIVITY);
+            Log.i("onItemClick",data.getName());
+            startService(intent);
+            mBindService = bindService(intent, mConnection, BIND_AUTO_CREATE);
+        }else{
+            super.onBackPressed();
+        }
+
+
     }
 }

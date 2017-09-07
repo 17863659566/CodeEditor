@@ -10,14 +10,17 @@ import android.os.Message;
 import android.os.Messenger;
 import android.os.RemoteException;
 import android.support.annotation.Nullable;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.text.Editable;
 import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.zh.young.codeeditor.Adapters.RecycleViewAdapter;
 import com.zh.young.codeeditor.R;
@@ -29,7 +32,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
 
-public class OpenFileActivity extends AppCompatActivity {
+public class OpenFileActivity extends AppCompatActivity implements View.OnClickListener {
 
     /**
      * 创建文件夹按钮
@@ -66,6 +69,8 @@ public class OpenFileActivity extends AppCompatActivity {
     private EditText mFileNameET;
     private String mFileType;
     private PullDownListView mFileTypePDLV;
+    private EditText mFolderName;
+    private AlertDialog mDialog;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -106,6 +111,7 @@ public class OpenFileActivity extends AppCompatActivity {
 
         View exploreFile = findViewById(R.id.explore_file);
         mCreateFolderButton = (ImageButton) exploreFile.findViewById(R.id.createFolderButton);
+        mCreateFolderButton.setOnClickListener(this);
         mFileList = (RecyclerView) exploreFile.findViewById(R.id.file_list);
 
         mDisplayPath = (TextView) exploreFile.findViewById(R.id.display_path);
@@ -117,6 +123,7 @@ public class OpenFileActivity extends AppCompatActivity {
         adapter.setOnItemClickListener(new RecycleViewAdapter.OnRecyclerViewItemClickListener() {
             @Override
             public void onItemClick(View view, File data) {
+                OpenFileActivity.this.data = data;
                 mDisplayPath.setText(data.getAbsolutePath());
                 if(data.isFile()){
                     //如果用户点击的是文件，那么直接将文件信息返回就可以了
@@ -153,4 +160,66 @@ public class OpenFileActivity extends AppCompatActivity {
     }
 
 
+    @Override
+    public void onClick(View v) {
+        switch (v.getId()){
+            case R.id.createFolderButton :
+                AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                View view = View.inflate(this, R.layout.new_foler, null);
+                mFolderName = (EditText) view.findViewById(R.id.folder_name);
+                view.findViewById(R.id.cancel_button).setOnClickListener(this);
+                view.findViewById(R.id.confirm_button).setOnClickListener(this);
+                builder.setView(view);
+                mDialog = builder.create();
+                mDialog.show();
+                break;
+            case R.id.cancel_button :
+                mDialog.dismiss();
+                break;
+            case R.id.confirm_button :
+                Editable text = mFolderName.getText();
+                File file = null;
+                if(data != null){
+
+                    file = new File(data, text.toString());
+                    if(file.exists()){
+                        Toast.makeText(this, R.string.can_create_foler_again, Toast.LENGTH_SHORT).show();
+                    }else{
+                        file.mkdir();
+                        Toast.makeText(this, R.string.create_foler_succeed, Toast.LENGTH_SHORT).show();
+                    }
+                }else{
+                    Toast.makeText(this, R.string.select_folder, Toast.LENGTH_SHORT).show();
+                }
+                mDialog.dismiss();
+                if(file != null){
+                    mFileLists.add(file);
+                    adapter.notifyDataSetChanged();
+                }
+
+
+                break;
+        }
+    }
+
+    @Override
+    public void onBackPressed() {
+        if(data != null){
+            if(data.getName().equals("storage")){
+                finish();
+            }
+            data = data.getParentFile();
+            mDisplayPath.setText(data.getAbsolutePath());
+            Intent intent = new Intent(OpenFileActivity.this, FileFindService.class);
+            intent.putExtra("file",data);
+            intent.putExtra("whoCall", Constants.NEW_FILE_ACTIVITY);
+            Log.i("onItemClick",data.getName());
+            startService(intent);
+            mBindService = bindService(intent, mConnection, BIND_AUTO_CREATE);
+        }else{
+            super.onBackPressed();
+        }
+
+
+    }
 }

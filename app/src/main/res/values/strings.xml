@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">TestApplication</string>
+    <string name="app_name">Code Editor</string>
     <string name="recent_open">最近打开</string>
     <string name="Command">命令</string>
     <string name="new_file">新建文件</string>
@@ -14,4 +14,10 @@
     <string name="confirm">确定</string>
     <string name="introduce">本软件为本人练手所用，可以试试，不一定好用，谢谢</string>
     <string name="contact">QQ:870684110</string>
+    <string name="new_foler">新建文件夹</string>
+    <string name="cancel">取消</string>
+    <string name="can_create_foler_again">文件夹已经存在，不能重复创建</string>
+    <string name="create_foler_succeed">创建文件夹成功</string>
+    <string name="select_folder">请选择一个目录</string>
+    <string name="can_not_create_file">请输入文件名</string>
 </resources>

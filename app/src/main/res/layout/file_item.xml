@@ -8,8 +8,7 @@
     android:id="@+id/folder_icon"
     android:padding="10dp"
     android:layout_width="wrap_content"
-    android:layout_height="50dp"
-    android:src="@drawable/folder"/>
+    android:layout_height="50dp" />
     <View
         android:id="@+id/boundary"
         android:layout_toEndOf="@id/folder_icon"

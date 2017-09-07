@@ -15,7 +15,6 @@ import com.zh.young.codeeditor.entity.Constants;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Collections;
 
 /**
  * 用于获取文件信息数据
@@ -73,16 +72,18 @@ public class FileFindService extends IntentService {
 
     /**
      * 处理打开文件的请求
-     * @param intent
      */
     private void processOpenFileActivityRequest(Intent intent) {
        //这里要进行区分文件和文件夹了，因为展示的需要
         File file = (File) intent.getSerializableExtra("file");
         if (lists.size() > 0)
             lists.clear();
-        if(file.listFiles().length > 0){
-            Collections.addAll(lists,file.listFiles());
-            Log.i("process","添加成功"+lists.size());
+        if(file.listFiles().length > 0) {
+            File[] files = file.listFiles();
+            for (File file1 : files) {
+                if (!file1.getName().startsWith("."))
+                    lists.add(file1);
+            }
         }
 
         Message msg = Message.obtain();
@@ -100,16 +101,21 @@ public class FileFindService extends IntentService {
 
     /**
      * 处理新建命令的操作
-     * @param intent
      */
     private void processNewFileActivityRequest(Intent intent) {
-        File file = (File) intent.getSerializableExtra("file"); //这里应该不会为空的，文件也应该不会为空，要不然是进不来的
-        //如果file是文件夹并且内部有其他的子File，那么就添加，否则就显示没有数据
-        if(file.isDirectory() && file.listFiles().length > 0){
-            Collections.addAll(lists, file.listFiles());
-        }else{
+        //这里要进行区分文件和文件夹了，因为展示的需要
+        File file = (File) intent.getSerializableExtra("file");
+        if (lists.size() > 0)
             lists.clear();
+        if(file.listFiles().length > 0){
+            File[] files = file.listFiles();
+            for (File file1 : files) {
+                if (!file1.getName().startsWith("."))
+                    lists.add(file1);
+            }
+            Log.i("process","添加成功"+lists.size());
         }
+
         Message msg = Message.obtain();
         msg.obj = lists;
         try {

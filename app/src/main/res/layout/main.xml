@@ -4,11 +4,11 @@
     android:layout_height="match_parent"
     android:fitsSystemWindows="true">
     <!--编辑界面的是否可编辑的选项由编辑按钮来进行确定-->
+    <!--自动换行-->
     <EditText
         android:id="@+id/et_panel"
-        android:inputType="text"
+        android:inputType="textMultiLine"
         android:gravity="top"
-        android:maxLines="50"
         android:enabled="false"
         android:background="@null"
         android:layout_width="match_parent"

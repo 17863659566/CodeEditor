@@ -10,10 +10,10 @@ import android.support.annotation.Nullable;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
 import android.text.Editable;
-import android.text.TextWatcher;
-import android.util.Log;
 import android.view.Gravity;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
@@ -22,21 +22,22 @@ import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.zh.young.codeeditor.Command.Command;
-import com.zh.young.codeeditor.Command.Invoker;
-import com.zh.young.codeeditor.Command.RedoCommand;
-import com.zh.young.codeeditor.Command.UndoCommand;
+import com.zh.young.codeeditor.Adapters.RecycleViewAdapter;
 import com.zh.young.codeeditor.Exception.FileSystemNotMount;
 import com.zh.young.codeeditor.R;
 import com.zh.young.codeeditor.entity.Constants;
-import com.zh.young.codeeditor.entity.MementoEntity;
+import com.zh.young.codeeditor.entity.OperationManager;
 import com.zh.young.codeeditor.entity.StringRecord;
-import com.zh.young.codeeditor.states.Memento;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.util.ArrayList;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -46,7 +47,7 @@ import static android.os.Environment.MEDIA_MOUNTED;
  * 编辑器界面
  */
 
-public class EditActivity extends AppCompatActivity implements View.OnClickListener, TextWatcher {
+public class EditActivity extends AppCompatActivity implements View.OnClickListener, RecycleViewAdapter.OnRecyclerViewItemClickListener {
 
     private DrawerLayout drawer;
     private EditText mEtPanel;
@@ -56,13 +57,12 @@ public class EditActivity extends AppCompatActivity implements View.OnClickListe
     private ImageButton mUndoButton;
     private ImageButton mRedoButton;
     private ImageButton mEditButton;
-    private Invoker mInvoker; //用于回退和恢复命令
-    private Handler mHandler = new Handler(){
+    private Handler mHandler = new Handler() {
         @Override
         public void handleMessage(Message msg) {
             super.handleMessage(msg);
-            switch (msg.what){
-                case Constants.REQUEST_OPEN_DRAWER :
+            switch (msg.what) {
+                case Constants.REQUEST_OPEN_DRAWER:
                     drawer.openDrawer(Gravity.START);
                     break;
             }
@@ -72,13 +72,21 @@ public class EditActivity extends AppCompatActivity implements View.OnClickListe
     private File mResultFile;
     private InputMethodManager mManager;
     private StringRecord mRecord;
-    private Memento mMementoInstance;
+    private OperationManager mWatcher;
+    private ArrayList<File> datas = new ArrayList();
+    private RecycleViewAdapter mAdapter;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_edit);
         findViews();
+
+        try {
+            readObjectFromCache();
+        } catch (IOException | ClassNotFoundException e) {
+            e.printStackTrace();
+        }
         Timer timer = new Timer();
         TimerTask task = new TimerTask() {
             @Override
@@ -88,10 +96,8 @@ public class EditActivity extends AppCompatActivity implements View.OnClickListe
                 mHandler.sendMessage(message);
             }
         };
-        timer.schedule(task,1000);
-        mInvoker = new Invoker();
+        timer.schedule(task, 800);
         mManager = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
-        mMementoInstance = Memento.getInstance();
 
     }
 
@@ -114,7 +120,8 @@ public class EditActivity extends AppCompatActivity implements View.OnClickListe
 
 
         mEtPanel = (EditText) findViewById(R.id.et_panel);
-        mEtPanel.addTextChangedListener(this);
+        mWatcher = new OperationManager();
+        mEtPanel.addTextChangedListener(mWatcher);
         drawer = (DrawerLayout) findViewById(R.id.drawer);
 
 
@@ -123,6 +130,11 @@ public class EditActivity extends AppCompatActivity implements View.OnClickListe
         slideMenu.findViewById(R.id.open_file_command).setOnClickListener(this);
         slideMenu.findViewById(R.id.setting_soft_command).setOnClickListener(this);
         slideMenu.findViewById(R.id.about_soft_command).setOnClickListener(this);
+        RecyclerView lists = (RecyclerView) slideMenu.findViewById(R.id.rv_display_history);
+        mAdapter = new RecycleViewAdapter(datas);
+        lists.setAdapter(mAdapter);
+        lists.setLayoutManager(new LinearLayoutManager(this,LinearLayoutManager.VERTICAL,false));
+        mAdapter.setOnItemClickListener(this);
 
     }
 
@@ -141,32 +153,36 @@ public class EditActivity extends AppCompatActivity implements View.OnClickListe
             case R.id.editButton:
                 //如果现在处于可编辑状态那么置为不可编辑，否则置为可编辑
                 //改变编辑按钮的颜色，如果处于可编辑状态，那么置为灰色，否则置为黑色
+                if(mResultFile == null)
+                    break;
                 if (isEnable) {
                     mEtPanel.setEnabled(false);
                     mEditButton.setImageResource(R.drawable.can_not_write);
                 } else {
                     mEtPanel.setEnabled(true);
                     mEtPanel.requestFocus();
-                    mManager.toggleSoftInput(0,InputMethodManager.HIDE_NOT_ALWAYS);
+                    mManager.toggleSoftInput(0, InputMethodManager.HIDE_NOT_ALWAYS);
                     mEditButton.setImageResource(R.drawable.writable);
                 }
                 isEnable = !isEnable;
                 break;
             case R.id.undoButton:
-                Command command = new UndoCommand();
-                mInvoker.setCommand(command);
-                mInvoker.call(mEtPanel);
+                if(mResultFile == null)
+                    break;
+                  mWatcher.undo(mEtPanel);
                 break;
             case R.id.redoButton:
-                command = new RedoCommand();
-                mInvoker.setCommand(command);
-                mInvoker.call(mEtPanel);
+                if(mResultFile == null)
+                    break;
+                mWatcher.redo(mEtPanel);
                 break;
             case R.id.saveButton:
+                if(mResultFile == null)
+                    break;
                 //1. 获取EditPanel中的数据
                 Editable text = mEtPanel.getText();
                 //2. 将数据写入到文件
-                if(mResultFile != null){
+                if (mResultFile != null) {
                     try {
                         FileWriter writer = new FileWriter(mResultFile);
                         writer.write(String.valueOf(text));
@@ -190,34 +206,34 @@ public class EditActivity extends AppCompatActivity implements View.OnClickListe
                 break;
             case R.id.new_file_command:
                 File file;
-                if(Environment.getExternalStorageState().equals(MEDIA_MOUNTED)){
+                if (Environment.getExternalStorageState().equals(MEDIA_MOUNTED)) {
                     file = Environment.getExternalStorageDirectory();
 
-                }else{
+                } else {
                     throw new FileSystemNotMount("file system unmounted");
                 }
 
                 Intent intent = new Intent(this, NewFileActivity.class);
-                intent.putExtra("file",file);
+                intent.putExtra("file", file);
                 startActivityForResult(intent, Constants.REQUEST_NEW_FILE_CODE);
                 //关闭drawer
                 drawer.closeDrawer(Gravity.START);
                 break;
             case R.id.open_file_command:
-                if(Environment.getExternalStorageState().equals(MEDIA_MOUNTED)){
+                if (Environment.getExternalStorageState().equals(MEDIA_MOUNTED)) {
                     file = Environment.getExternalStorageDirectory();
 
-                }else{
+                } else {
                     throw new FileSystemNotMount("file system unmounted");
                 }
 
                 intent = new Intent(this, OpenFileActivity.class);
-                intent.putExtra("file",file);
+                intent.putExtra("file", file);
                 drawer.closeDrawer(Gravity.START);
                 startActivityForResult(intent, Constants.REQUEST_OPEN_FILE_CODE);
                 break;
             case R.id.setting_soft_command:
-                 intent = new Intent(this,SettingActivity.class);
+                intent = new Intent(this, SettingActivity.class);
                 startActivity(intent);
                 break;
             case R.id.about_soft_command:
@@ -230,15 +246,21 @@ public class EditActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if(resultCode == RESULT_OK){
-            switch (requestCode){
-                case Constants.REQUEST_NEW_FILE_CODE :
+        if (resultCode == RESULT_OK) {
+            switch (requestCode) {
+                case Constants.REQUEST_NEW_FILE_CODE:
                     mResultFile = (File) data.getSerializableExtra("file");
                     Toast.makeText(this, mResultFile.getName(), Toast.LENGTH_SHORT).show();
                     //更新文件名和打开文件的可编辑状态
                     mDisplayFileName.setText(mResultFile.getName());
                     mEtPanel.setEnabled(true);
                     mEditButton.setImageResource(R.drawable.writable);
+                    mEtPanel.setText("");
+                    //将文件添加到列表中，便于展示
+                    if(!datas.contains(mResultFile)){
+                        datas.add(mResultFile);
+                    }
+                    mAdapter.notifyDataSetChanged();
                     break;
                 case Constants.REQUEST_OPEN_FILE_CODE:
                     mResultFile = (File) data.getSerializableExtra("file");
@@ -246,7 +268,7 @@ public class EditActivity extends AppCompatActivity implements View.OnClickListe
                     mEtPanel.setEnabled(true);
                     mEditButton.setImageResource(R.drawable.writable);
                     // TODO 读取数据，显示到编辑面板上
-                    String text="";
+                    String text = "";
                     try {
 
                         text = readFromFile(mResultFile);
@@ -256,7 +278,15 @@ public class EditActivity extends AppCompatActivity implements View.OnClickListe
                     mEtPanel.setText(text);
                     //设置光标的位置为文字的末端
                     mEtPanel.setSelection(text.length());
+                    //将文件添加到列表中，便于展示
+                    if(!datas.contains(mResultFile)){
+                        datas.add(mResultFile);
+                    }
+
+                    mAdapter.notifyDataSetChanged();
                     break;
+
+
             }
         }
 
@@ -266,43 +296,64 @@ public class EditActivity extends AppCompatActivity implements View.OnClickListe
         StringBuilder sb = new StringBuilder();
         char[] string = new char[1024];
         FileReader reader = new FileReader(file);
-        while(reader.read(string) != -1){
+        while (reader.read(string) != -1) {
             sb.append(string);
         }
 
         return sb.toString();
     }
 
-
-
     @Override
-    public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-                mRecord = new StringRecord();
-                mRecord.start = start;
-                mRecord.after = after;
-        //Log.i("TextWatcher","beforeTextChanged"+ start +"----" + after);
+    public void onItemClick(View view, File data) {
+        //当点击的时候去打开对应的文件展示到对应的位置
+        //更新文件名和打开文件的可编辑状态
+        mDisplayFileName.setText(data.getName());
+        mEtPanel.setEnabled(true);
+        mEditButton.setImageResource(R.drawable.writable);
 
+        String text = "";
+        try {
 
+            text = readFromFile(data);
+        } catch (IOException e) {
+            Toast.makeText(this, "文件读取异常，请稍后再试", Toast.LENGTH_SHORT).show();
+        }
+        drawer.closeDrawer(Gravity.START);
+        mEtPanel.setText(text);
+        //设置光标的位置为文字的末端
+        mEtPanel.setSelection(text.length());
     }
 
     @Override
-    public void onTextChanged(CharSequence s, int start, int before, int count) {
-        //Log.i("TextWatcher","onTextChanged");
+    protected void onDestroy() {
+        //在这里将需要存储的数据存储到缓存中
+        super.onDestroy();
+        try {
+            writeObjectToCache();
+        } catch (IOException e) {
+            Toast.makeText(this, "文件写入异常", Toast.LENGTH_SHORT).show();
+            e.printStackTrace();
+        }
     }
 
-    @Override
-    public void afterTextChanged(Editable s) {
-        //记录当前输入的数据
-        String string = s.subSequence(mRecord.start + mRecord.count, s.length()).toString();
-        MementoEntity undoEntity = new MementoEntity();
-        MementoEntity redoEntity = new MementoEntity();
-        undoEntity.setData(s.toString());
-        undoEntity.setStart(0);
-        undoEntity.setAfter(mRecord.start);
-        redoEntity.setData(s.toString());
-        redoEntity.setStart(mRecord.start);
-        redoEntity.setAfter(mRecord.after + mRecord.start);
-        mMementoInstance.undoAddState(undoEntity);
-        mMementoInstance.redoAddState(redoEntity);
+    void writeObjectToCache() throws IOException {
+        File cacheDir = getCacheDir();
+        File cache = new File(cacheDir, "file_cache");
+        ObjectOutputStream outputStream = new ObjectOutputStream(new FileOutputStream(cache));
+        for(int i = 0;i < datas.size();i++){
+            outputStream.writeObject(datas.get(i));
+        }
+        outputStream.close();
+
+    }
+
+    void readObjectFromCache() throws IOException, ClassNotFoundException {
+        File cacheDir = getCacheDir();
+        File cache = new File(cacheDir, "file_cache");
+        ObjectInputStream inputStream = new ObjectInputStream(new FileInputStream(cache));
+        File temp;
+        while((temp = (File) inputStream.readObject()) != null){
+            datas.add(temp);
+        }
     }
 }
